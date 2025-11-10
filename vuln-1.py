@@ -8,20 +8,28 @@ app = flask.Flask(__name__)
 
 @app.route("/route_param/<route_param>")
 def route_param(route_param):
-
-    # Fixed: Use subprocess with list of arguments to prevent command injection
-    # Never pass user input directly to shell commands
+    # Fixed: Allowlist approach to prevent command injection
+    # Only allow specific, safe commands
+    ALLOWED_COMMANDS = {
+        'date': ['/bin/date'],
+        'uptime': ['/usr/bin/uptime'],
+        'whoami': ['/usr/bin/whoami']
+    }
+    
+    if route_param not in ALLOWED_COMMANDS:
+        return flask.jsonify({"error": "Command not allowed"}), 403
+    
     try:
         result = subprocess.run(
-            [route_param],  # Pass as list, not through shell
+            ALLOWED_COMMANDS[route_param],
             capture_output=True,
             text=True,
             timeout=5,
             check=False
         )
-        return f"Output: {result.stdout}"
+        return flask.jsonify({"output": result.stdout, "command": route_param})
     except Exception as e:
-        return f"Error: {str(e)}", 400
+        return flask.jsonify({"error": str(e)}), 400
 
 
 # Flask true negatives
